@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>李栋强 | 视觉设计作品集</title>
+    <style>
+        /* --- 1. 配色变量 --- */
+        :root {
+            /* 白天模式：通透空气感 */
+            --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --card-bg: #ffffff;
+            --text-main: #1d1d1f;
+            --text-sub: #6e6e73;
+            --shadow: 0 10px 30px rgba(0,0,0,0.06);
+            --btn-bg: rgba(0,0,0,0.05);
+            --btn-text: #1d1d1f;
+            --btn-active-bg: #000000;
+            --btn-active-text: #ffffff;
+            --lightbox-overlay: rgba(255, 255, 255, 0.8); 
+            --footer-icon: #1d1d1f;
+            --series-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        /* 夜间模式 */
+        [data-theme="dark"] {
+            --bg-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            --glass-bg: rgba(28, 28, 30, 0.75);
+            --card-bg: #1c1c1e;
+            --text-main: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --shadow: 0 15px 40px rgba(0,0,0,0.6);
+            --btn-bg: rgba(255,255,255,0.1);
+            --btn-text: #f5f5f7;
+            --btn-active-bg: #ffffff;
+            --btn-active-text: #000000;
+            --lightbox-overlay: rgba(0, 0, 0, 0.85);
+            --footer-icon: #f5f5f7;
+            --series-bg: rgba(15, 32, 39, 0.98);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: -apple-system, "SF Pro Display", "PingFang SC", sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.6s ease, color 0.6s ease;
+        }
+
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        /* --- 导航栏 --- */
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 20px 40px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            z-index: 1000;
+            transition: transform 0.4s ease;
+        }
+        nav.hidden { transform: translateY(-100%); }
+        .logo { font-weight: 600; font-size: 1.1rem; letter-spacing: 0.5px; }
+        .nav-links a { 
+            font-size: 0.9rem; color: var(--text-sub); text-decoration: none; margin-left: 25px;
+            transition: color 0.3s; font-weight: 500;
+        }
+        .nav-links a:hover { color: var(--text-main); }
+        .theme-toggle {
+            cursor: pointer; width: 32px; height: 32px; margin-left: 20px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; transition: background 0.3s; font-size: 1.1rem;
+        }
+        .theme-toggle:hover { background: rgba(128,128,128,0.2); }
+
+        /* --- Hero --- */
+        .hero {
+            height: 80vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 0 20px;
+        }
+        .hero h1 {
+            font-size: clamp(3rem, 6vw, 5rem); font-weight: 800;
+            background: linear-gradient(135deg, var(--text-main) 0%, var(--text-sub) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 20px; letter-spacing: -1px;
+            animation: fadeUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
+            opacity: 0; transform: translateY(30px);
+        }
+        .hero p {
+            font-size: 1.1rem; color: var(--text-sub); max-width: 500px;
+            animation: fadeUp 1s 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
+            opacity: 0; transform: translateY(30px);
+        }
+
+        .gallery-section { padding: 20px 5% 120px; max-width: 1600px; margin: 0 auto; }
+        .section-header { margin-bottom: 50px; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .course-filter { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .filter-btn {
+            padding: 10px 24px; border-radius: 40px;
+            background: var(--btn-bg); color: var(--btn-text);
+            font-weight: 500; font-size: 0.9rem;
+            cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border: 1px solid transparent;
+            backdrop-filter: blur(5px);
+        }
+        .filter-btn:hover { transform: scale(1.05); }
+        .filter-btn.active {
+            background: var(--btn-active-bg); color: var(--btn-active-text);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* --- 首页卡片 --- */
+        .gallery-deck {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 24px; padding: 20px 0; perspective: 1000px; min-height: 400px;
+        }
+
+        .card {
+            width: 280px; aspect-ratio: 3 / 4;
+            background-color: var(--card-bg); border-radius: 16px;
+            position: relative; overflow: hidden; cursor: pointer;
+            will-change: transform, opacity;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: var(--shadow);
+            display: flex; flex-direction: column; justify-content: flex-end;
+            z-index: 1;
+        }
+        .card.hidden { display: none; }
+        .card.filtering-out { opacity: 0; transform: scale(0.8); }
+        .card.fade-in { animation: popIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+        .card-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            background-repeat: no-repeat; background-color: var(--card-bg);
+            transition: all 0.5s ease;
+        }
+        .card-info {
+            position: relative; z-index: 2; padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            color: #fff; transform: translateY(100%); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .card-cat { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; opacity: 0.9; }
+        .card-title { font-size: 1.1rem; font-weight: 600; }
+
+        /* 卡片交互 */
+        .gallery-deck:has(.card:hover) .card:not(:hover) { opacity: 0.5; filter: blur(5px) grayscale(60%); transform: scale(0.95); }
+        .card:hover { opacity: 1; filter: blur(0); transform: scale(1.15) translateY(-10px); z-index: 100; box-shadow: 0 40px 100px rgba(0,0,0,0.3); border-radius: 12px; }
+        /* 悬停时完整显示图片 */
+        .card:hover .card-bg { background-size: contain; background-color: #000; }
+        .card:hover .card-info { transform: translateY(0); opacity: 1; }
+
+        /* --- 系列详情视图 (横向滚动) --- */
+        .series-view {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--series-bg);
+            z-index: 1500;
+            display: flex; flex-direction: column; justify-content: center;
+            opacity: 0; pointer-events: none; transform: translateY(50px);
+            transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            backdrop-filter: blur(15px);
+        }
+        .series-view.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+        .series-header {
+            position: absolute; top: 40px; left: 40px; right: 40px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 10;
+        }
+        .series-title { font-size: 2rem; font-weight: 700; color: var(--text-main); }
+        .series-close { 
+            font-size: 1.5rem; cursor: pointer; color: var(--text-sub); 
+            transition: 0.3s; padding: 10px;
+        }
+        .series-close:hover { color: var(--text-main); transform: rotate(90deg); }
+
+        .series-track {
+            display: flex; align-items: center;
+            padding-left: 10%; padding-right: 10%;
+            gap: 40px;
+            overflow-x: auto; overflow-y: hidden;
+            height: 70vh;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none; 
+        }
+        .series-track::-webkit-scrollbar { display: none; }
+
+        .series-item {
+            flex: 0 0 auto;
+            width: 50vh; height: 60vh;
+            border-radius: 12px;
+            background-size: cover; background-position: center;
+            scroll-snap-align: center;
+            cursor: zoom-in;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            transition: all 0.1s linear;
+            position: relative;
+        }
+        
+        .series-hint {
+            position: absolute; bottom: 30px; width: 100%; text-align: center;
+            color: var(--text-sub); font-size: 0.9rem; opacity: 0.7;
+        }
+
+        /* --- 底部 & 灯箱 --- */
+        footer {
+            background: var(--card-bg); backdrop-filter: blur(20px);
+            padding: 80px 10% 40px; margin-top: 0;
+            border-top: 1px solid rgba(128,128,128,0.1);
+            transition: background-color 0.6s ease;
+        }
+        .footer-content {
+            display: grid; grid-template-columns: 2fr 1fr 1fr;
+            gap: 60px; margin-bottom: 60px;
+        }
+        @media(max-width: 900px) { .footer-content { grid-template-columns: 1fr; text-align: center; } }
+        .footer-col h3 { font-size: 1.1rem; margin-bottom: 25px; color: var(--text-main); font-weight: 700; }
+        .info-row { 
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; 
+            border-bottom: 1px solid rgba(128,128,128,0.08); padding-bottom: 12px;
+            cursor: default; transition: 0.3s;
+        }
+        .info-row svg { width: 18px; height: 18px; fill: var(--footer-icon); margin-right: 10px; opacity: 0.7; transition: fill 0.6s ease; }
+        .row-left { display: flex; align-items: center; }
+        @media(max-width: 900px) { .info-row { justify-content: center; gap: 20px; } }
+        .info-label { color: var(--text-sub); font-size: 0.9rem; }
+        .info-value { color: var(--text-main); font-weight: 500; font-size: 0.95rem; }
+        .clickable-row { cursor: pointer; }
+        .clickable-row:hover { background: rgba(0,0,0,0.03); padding-left: 10px; padding-right: 10px; border-radius: 8px; }
+        .clickable-row:hover .info-value { color: #2997ff; }
+        .footer-bottom { text-align: center; font-size: 0.8rem; color: var(--text-sub); opacity: 0.6; }
+
+        .lightbox {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; visibility: hidden;
+            transition: opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.5s;
+            background: var(--lightbox-overlay); 
+            backdrop-filter: blur(40px) saturate(160%);
+            -webkit-backdrop-filter: blur(40px) saturate(160%);
+        }
+        .lightbox.active { opacity: 1; pointer-events: auto; visibility: visible; }
+        .lightbox img {
+            max-width: 90%; max-height: 90vh; border-radius: 8px;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.25);
+            transform: scale(0.9); opacity: 0;
+            will-change: transform, opacity;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
+        }
+        .lightbox.active img { transform: scale(1); opacity: 1; }
+        .lightbox-close {
+            position: absolute; top: 30px; right: 40px;
+            color: var(--text-main); font-size: 2.5rem; cursor: pointer; opacity: 0.6; transition: 0.3s;
+        }
+        .lightbox-close:hover { opacity: 1; transform: rotate(90deg); }
+
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); } 
+            100% { opacity: 1; transform: scale(1) translateY(0); } 
+        }
+    </style>
+</head>
+<body>
+
+    <nav id="navbar">
+        <div class="logo">李栋强作品集</div>
+        <div class="nav-right">
+            <div class="nav-links">
+                <a href="#gallery">作品</a>
+                <a href="#about-section">关于</a>
+            </div>
+            <div class="theme-toggle" id="themeBtn" title="切换模式">☀</div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>CREATIVE VISION.</h1>
+        <p>李栋强的视觉设计作品集</p>
+    </section>
+
+    <section class="gallery-section" id="gallery">
+        <div class="section-header">
+            <div class="course-filter">
+                <div class="filter-btn active" onclick="filterProjects('all')">全部</div>
+                <div class="filter-btn" onclick="filterProjects('VI Design')">VI设计</div>
+                <div class="filter-btn" onclick="filterProjects('Illustration')">插画</div>
+                <div class="filter-btn" onclick="filterProjects('Typography')">字体设计</div>
+                <div class="filter-btn" onclick="filterProjects('Photography')">摄影</div>
+                <div class="filter-btn" onclick="filterProjects('Blender')">Blender</div>
+            </div>
+        </div>
+        
+        <div class="gallery-deck" id="grid-container">
+            </div>
+    </section>
+
+    <div class="series-view" id="series-view" onclick="closeSeries(event)">
+        <div class="series-header">
+            <div class="series-title" id="series-title">Series Name</div>
+            <div class="series-close" onclick="closeSeriesDirectly()">×</div>
+        </div>
+        <div class="series-track" id="series-track">
+            </div>
+        <div class="series-hint">← 滑动观看系列 / 点击查看大图 →</div>
+    </div>
+
+    <footer id="about-section">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3>关于设计师</h3>
+                <p style="color: var(--text-sub); line-height: 1.7;">
+                    李栋强，视觉传达设计专业。<br>
+                    擅长通过多维度的视觉语言，探索品牌、插画与三维空间的无限可能。
+                </p>
+            </div>
+            <div class="footer-col">
+                <h3>基本信息</h3>
+                <div class="info-row">
+                    <div class="row-left">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span class="info-label">姓名</span>
+                    </div>
+                    <span class="info-value">李栋强</span>
+                </div>
+                <div class="info-row clickable-row" onclick="openMap()">
+                    <div class="row-left">
+                        <svg viewBox="0 0 24 24"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+                        <span class="info-label">院校 (点击位置)</span>
+                    </div>
+                    <span class="info-value">桂林学院</span>
+                </div>
+                <div class="info-row">
+                    <div class="row-left">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                        <span class="info-label">专业</span>
+                    </div>
+                    <span class="info-value">视觉传达设计</span>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>联系方式</h3>
+                <div class="info-row">
+                    <div class="row-left">
+                        <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                        <span class="info-label">手机</span>
+                    </div>
+                    <span class="info-value">189-4605-9540</span>
+                </div>
+                <div class="info-row">
+                    <div class="row-left">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="#34c759"/></svg>
+                        <span class="info-label">状态</span>
+                    </div>
+                    <span class="info-value" style="color:#34c759">● 在线</span>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2025 Li Dongqiang. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">×</span>
+        <img id="lightbox-img" src="" alt="Full View">
+    </div>
+
+    <script>
+        // --- 核心数据更新 ---
+        const myProjects = [
+            // 1. 赤尾 (插画 - 系列)
+            { 
+                id: 1, cat: 'Illustration', title: '赤尾', 
+                cover: './images/chiwei1.jpg',
+                gallery: [
+                    './images/chiwei1.jpg', // 第一张
+                    './images/chiwei2.jpg'  // 第二张
+                ]
+            }, 
+            
+            // 2. 中式字体 (字体设计 - 单张，无系列)
+            { 
+                id: 2, cat: 'Typography', title: '中式字体设计', 
+                cover: './images/font1.jpg', 
+                gallery: ['./images/font1.jpg'] // 只有一张
+            },
+
+            // 3. 石巷行人归 (摄影 - 单张，无系列)
+            { 
+                id: 3, cat: 'Photography', title: '石巷行人归', 
+                cover: './images/photo1.jpg', 
+                gallery: ['./images/photo1.jpg'] // 只有一张
+            },
+
+            // 4. 飞行自行车 (Blender - 单张，无系列)
+            { 
+                id: 4, cat: 'Blender', title: '飞行自行车', 
+                cover: './images/blender1.jpg', 
+                gallery: ['./images/blender1.jpg'] // 只有一张
+            },
+
+            // 5. 补充示例数据 (保持版面不空，你可以稍后替换)
+            { id: 5, cat: 'VI Design', title: '品牌识别', cover: 'https://images.unsplash.com/photo-1620912189868-30778c93a0bd?w=800&q=80', gallery: ['https://images.unsplash.com/photo-1620912189868-30778c93a0bd?w=800&q=80'] },
+            { id: 6, cat: 'VI Design', title: 'Logo 合集', cover: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80', gallery: ['https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80'] }
+        ];
+
+        // --- 1. 渲染首页 ---
+        function renderProjects() {
+            const grid = document.getElementById('grid-container');
+            grid.innerHTML = '';
+            myProjects.forEach((p, index) => {
+                const cardHTML = `
+                    <div class="card fade-in" data-cat="${p.cat}" onclick="openSeries(${p.id})" style="animation-delay: ${index * 0.05}s">
+                        <div class="card-bg" style="background-image: url('${p.cover}')"></div>
+                        <div class="card-info">
+                            <div class="card-cat">${p.cat}</div>
+                            <div class="card-title">${p.title}</div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHTML;
+            });
+        }
+
+        // --- 2. 丝滑筛选 ---
+        let isFiltering = false;
+        function filterProjects(category) {
+            if(isFiltering) return;
+            isFiltering = true;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            const cards = document.querySelectorAll('.card');
+            const cardsToHide = [];
+            const cardsToShow = [];
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.cat === category) {
+                    cardsToShow.push(card);
+                } else {
+                    cardsToHide.push(card);
+                }
+            });
+            cardsToHide.forEach(card => {
+                card.classList.remove('fade-in');
+                card.classList.add('filtering-out');
+                setTimeout(() => { card.classList.add('hidden'); }, 300);
+            });
+            setTimeout(() => {
+                let delayIndex = 0;
+                cardsToShow.forEach(card => {
+                    card.classList.remove('hidden');
+                    card.classList.remove('filtering-out');
+                    void card.offsetWidth;
+                    card.classList.add('fade-in');
+                    card.style.animationDelay = `${delayIndex * 0.05}s`;
+                    delayIndex++;
+                });
+                isFiltering = false;
+            }, 300);
+        }
+
+        // --- 3. 系列视图逻辑 ---
+        const seriesView = document.getElementById('series-view');
+        const seriesTrack = document.getElementById('series-track');
+        const seriesTitle = document.getElementById('series-title');
+
+        function openSeries(projectId) {
+            const project = myProjects.find(p => p.id === projectId);
+            if (!project) return;
+
+            seriesTitle.innerText = project.title;
+            seriesTrack.innerHTML = '';
+            
+            project.gallery.forEach(imgSrc => {
+                const item = document.createElement('div');
+                item.className = 'series-item';
+                item.style.backgroundImage = `url('${imgSrc}')`;
+                item.onclick = (e) => {
+                    e.stopPropagation(); 
+                    openLightbox(imgSrc);
+                };
+                seriesTrack.appendChild(item);
+            });
+
+            seriesView.classList.add('active');
+            document.body.style.overflow = 'hidden'; 
+            seriesTrack.addEventListener('scroll', handleSeriesScroll);
+            handleSeriesScroll();
+        }
+
+        function closeSeries(e) {
+            if(e.target === seriesView || e.target === seriesTrack) {
+                closeSeriesDirectly();
+            }
+        }
+
+        function closeSeriesDirectly() {
+            seriesView.classList.remove('active');
+            document.body.style.overflow = '';
+            seriesTrack.removeEventListener('scroll', handleSeriesScroll);
+        }
+
+        function handleSeriesScroll() {
+            const items = document.querySelectorAll('.series-item');
+            const trackLeft = seriesTrack.scrollLeft;
+            const vw = window.innerWidth;
+            
+            items.forEach((item) => {
+                const itemOffset = item.offsetLeft - trackLeft;
+                let scale = 1;
+                let opacity = 1;
+                if (itemOffset > vw * 0.5) {
+                    const distance = itemOffset - vw * 0.5;
+                    scale = 1 - (distance / vw) * 0.4;
+                    opacity = 1 - (distance / vw) * 0.5;
+                }
+                if (scale < 0.6) scale = 0.6;
+                if (opacity < 0.4) opacity = 0.4;
+                item.style.transform = `scale(${scale})`;
+                item.style.opacity = opacity;
+            });
+        }
+
+        // --- 灯箱 ---
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        function openLightbox(src) { 
+            lightboxImg.src = src; 
+            lightbox.classList.add('active'); 
+        }
+        function openMap() {
+            const mapUrl = "https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&q=80"; 
+            openLightbox(mapUrl);
+        }
+        function closeLightbox() { 
+            lightbox.classList.remove('active'); 
+        }
+
+        // --- 其他 ---
+        const themeBtn = document.getElementById('themeBtn');
+        const html = document.documentElement;
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            html.setAttribute('data-theme', 'dark');
+            themeBtn.innerText = '🌙';
+        }
+        themeBtn.addEventListener('click', () => {
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                themeBtn.innerText = '☀';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                themeBtn.innerText = '🌙';
+            }
+        });
+
+        let lastScrollTop = 0;
+        const navbar = document.getElementById('navbar');
+        window.addEventListener("scroll", function() {
+            let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (scrollTop > lastScrollTop && scrollTop > 100) { navbar.classList.add('hidden'); } else { navbar.classList.remove('hidden'); }
+            lastScrollTop = scrollTop;
+        });
+
+        window.onload = renderProjects;
+    </script>
+</body>
+</html>
