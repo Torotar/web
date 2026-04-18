@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>歌词工作室 v19.0 - 全平台适配版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117; --card-bg: #161b22; --accent-color: #3b82f6;
+            --text-color: #c9d1d9; --border-color: #30363d; --active-bg: rgba(59, 130, 246, 0.15);
+            --prev-bg: linear-gradient(145deg, #09090b, #18181b);
+            --word-dim: rgba(255, 255, 255, 0.25); --word-bright: #ffffff;
+            --danger: #f85149;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+
+        /* 顶部导航 */
+        header {
+            background-color: var(--card-bg); padding: 12px 20px; display: flex;
+            justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); z-index: 100;
+        }
+
+        .controls { display: flex; gap: 12px; align-items: center; }
+        
+        button {
+            background-color: var(--card-bg); color: #fff; border: 1px solid var(--border-color);
+            padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap;
+        }
+        button:hover { background-color: #21262d; border-color: #8b949e; }
+        button.primary { background-color: var(--accent-color); border-color: var(--accent-color); font-weight: 500;}
+        button.primary:hover { background-color: #2563eb; }
+
+        /* 自定义下拉框 */
+        .custom-select-wrapper { position: relative; width: 170px; font-size: 13px; user-select: none; flex-shrink: 0; }
+        .custom-select-trigger {
+            background-color: #0d1117; color: white; border: 1px solid var(--border-color);
+            padding: 8px 14px; border-radius: 8px; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center; transition: border-color 0.2s;
+        }
+        .custom-select-trigger::after {
+            content: ""; width: 6px; height: 6px; border-right: 2px solid #8b949e; border-bottom: 2px solid #8b949e;
+            transform: rotate(45deg) translateY(-2px); transition: transform 0.2s;
+        }
+        .custom-select-wrapper.open .custom-select-trigger::after { transform: rotate(225deg) translateY(-2px) translateX(-2px); }
+        .custom-options {
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+            background-color: #161b22; border: 1px solid var(--border-color); border-radius: 8px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 999;
+            opacity: 0; visibility: hidden; transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            max-height: 250px; overflow-y: auto; overflow-x: hidden;
+        }
+        .custom-select-wrapper.open .custom-options { opacity: 1; visibility: visible; transform: translateY(0); }
+        .custom-option { padding: 10px 14px; cursor: pointer; transition: background 0.2s; color: #c9d1d9; }
+        .custom-option:hover { background-color: rgba(59, 130, 246, 0.2); color: #fff; }
+
+        /* 主体内容区 */
+        main { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; position: relative; }
+
+        /* 基础面板样式 */
+        .panel-container {
+            background: var(--card-bg); border-radius: 12px; display: flex;
+            flex-direction: column; border: 1px solid var(--border-color); overflow: hidden;
+        }
+        .panel-title {
+            padding: 12px 15px; background: rgba(0,0,0,0.2); font-size: 14px;
+            border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
+        }
+        .count-badge { background: #30363d; color: #c9d1d9; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;}
+        
+        /* 独立模块宽高分配 (PC端) */
+        #file-sidebar { width: 220px; }
+        #editor-container { flex: 1.2; }
+        #preview-container { flex: 1.4; background: var(--prev-bg); }
+
+        /* 文件列表 */
+        #file-list-container { flex: 1; overflow-y: auto; }
+        .file-item { padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-size: 13px; display: flex; justify-content: space-between; align-items: center; color: #8b949e; transition: 0.2s; }
+        .file-item:hover { background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; }
+        .file-item.active { background: var(--active-bg); color: #fff; border-left: 3px solid var(--accent-color); }
+        .file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .delete-btn { color: var(--danger); background: transparent; border: none; padding: 2px 6px; border-radius: 4px; font-size: 12px; opacity: 0;}
+        .file-item:hover .delete-btn { opacity: 1; }
+
+        /* 编辑器列表 */
+        #lyric-list { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        .lyric-row { padding: 12px 15px; border-bottom: 1px solid var(--border-color); border-left: 3px solid transparent; transition: all 0.3s ease; }
+        .lyric-row:hover { background-color: rgba(255,255,255,0.02); }
+        .lyric-row.active { background-color: var(--active-bg); border-left-color: var(--accent-color); padding-left: 20px; }
+        
+        .row-main { display: flex; align-items: flex-start; gap: 8px; }
+        .time-box { font-family: monospace; width: 65px; background: #0d1117; border: 1px solid var(--border-color); color: #d2a8ff; padding: 6px; text-align: center; border-radius: 4px; font-size: 13px; outline: none; margin-top: 2px; }
+        .time-box:focus { border-color: var(--accent-color); }
+        .lyric-inputs { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .text-box { padding: 6px 10px; background: #0d1117; border: 1px solid var(--border-color); color: #c9d1d9; font-size: 14px; border-radius: 4px; outline: none; }
+        .text-box:focus { border-color: var(--accent-color); }
+        .trans-box { font-size: 12px; color: #8b949e; background: #111; }
+        .btn-word { padding: 6px 10px; background: var(--accent-color); border: none; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 2px; }
+
+        .word-panel { display: none; background: #0d1117; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px; }
+        .word-panel.show { display: flex; }
+        .word-item { background: #161b22; padding: 6px 8px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; border: 1px solid #30363d; gap: 4px; }
+        .word-item span { font-size: 12px; font-weight: bold; color: #e6edf3; }
+        .word-item input { width: 55px; background: transparent; border: none; color: #79c0ff; text-align: center; font-family: monospace; font-size: 11px; outline: none; }
+        .word-btn-group { display: flex; gap: 2px; }
+        .word-btn-group button { padding: 2px 6px; font-size: 10px; min-width: 24px; border: 1px solid #30363d; background: #21262d; border-radius: 4px;}
+
+        /* 预览区 */
+        #lyric-display { flex: 1; overflow-y: auto; padding: 40vh 40px; text-align: left; scrollbar-width: none; }
+        #lyric-display::-webkit-scrollbar { display: none; }
+
+        .lrc-line { margin: 40px 0; transform-origin: left center; border-radius: 12px; padding: 10px 15px; margin-left: -15px; line-height: 1.6; transform: scale(0.85); filter: blur(1.5px); opacity: 0.25; transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.3, 1), filter 0.8s ease, opacity 0.8s ease; }
+        .lrc-line:hover { cursor: pointer; background: rgba(255,255,255,0.05); opacity: 0.9 !important; filter: blur(0px) !important; }
+        .lrc-line.active { transform: scale(1.05); filter: blur(0); opacity: 1; background: transparent; }
+
+        .main-lyric { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+        .trans-lyric { font-size: 18px; margin-top: 8px; color: rgba(255,255,255,0.4); transition: color 0.8s ease; }
+        .lrc-line.active .trans-lyric { color: rgba(255,255,255,0.9); }
+        .word { display: inline-block; white-space: pre-wrap; }
+
+        /* 动效引擎 */
+        #lyric-display.mode-apple .main-lyric { color: var(--word-dim); }
+        #lyric-display.mode-apple .word { background: linear-gradient(to right, var(--word-bright) var(--fill, 0%), var(--word-dim) var(--fill, 0%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        #lyric-display.mode-apple .lrc-line.active .word { filter: drop-shadow(0 0 10px rgba(255,255,255,0.3)); }
+
+        #lyric-display.mode-better .lrc-line { transform: scale(0.95); filter: blur(1.5px); opacity: 0.3; transition: transform 0.6s ease, filter 0.6s ease, opacity 0.6s ease; }
+        #lyric-display.mode-better .lrc-line.active { transform: scale(1); filter: blur(0); opacity: 1; }
+        #lyric-display.mode-better .word { color: var(--word-dim); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease, text-shadow 0.3s ease; transform-origin: bottom left; }
+        #lyric-display.mode-better .lrc-line.active .word.singing, #lyric-display.mode-better .lrc-line.active .word.sung { color: var(--word-bright); transform: scale(1.08) translateY(-1px); text-shadow: 0 2px 8px rgba(255,255,255,0.3); z-index: 2; position: relative; }
+
+        /* 全局底部悬浮播放器 */
+        #global-player-box {
+            background: rgba(22, 27, 34, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-color); padding: 12px 20px;
+            display: flex; align-items: center; gap: 20px; z-index: 1000;
+        }
+        #audio-file-info { font-size: 13px; color: #8b949e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 200px;}
+        audio { flex: 1; height: 35px; outline: none; }
+
+        /* 移动端底部 Tab 导航 (默认隐藏) */
+        #mobile-tabs { display: none; }
+
+        .hidden { display: none; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; border: 2px solid var(--bg-color); }
+        ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+        /* ========================================================= */
+        /* 响应式适配：移动端 (小于 768px)                            */
+        /* ========================================================= */
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 12px 15px; align-items: flex-start; gap: 12px; }
+            .header-title { display: none; } /* 空间不够，隐藏标题 */
+            .controls { width: 100%; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+            .controls::-webkit-scrollbar { display: none; }
+            .custom-select-wrapper { width: 150px; }
+
+            /* 主容器取消边距，采用绝对定位堆叠来实现 Tab 切换 */
+            main { padding: 0; display: block; position: relative; background: var(--bg-color); }
+            
+            .panel-container {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                border: none; border-radius: 0; opacity: 0; pointer-events: none; z-index: 1;
+                transition: opacity 0.3s;
+            }
+            
+            /* Tab 激活逻辑 */
+            main[data-active-tab="files"] #file-sidebar,
+            main[data-active-tab="editor"] #editor-container,
+            main[data-active-tab="preview"] #preview-container {
+                opacity: 1; pointer-events: auto; z-index: 10;
+            }
+
+            /* 触屏交互放大 */
+            .lyric-row { padding: 15px; }
+            .row-main { flex-direction: column; align-items: stretch; }
+            .time-box { width: 100%; padding: 10px; font-size: 15px; }
+            .text-box { padding: 10px; font-size: 16px; }
+            .btn-word { padding: 10px; font-size: 14px; margin-top: 5px; }
+            
+            .word-item { flex-direction: row; justify-content: space-between; padding: 10px; }
+            .word-item input { font-size: 14px; width: 80px; }
+            .word-btn-group button { padding: 8px 12px; font-size: 14px; }
+            .delete-btn { opacity: 1; padding: 8px 12px; } /* 移动端常驻删除按钮 */
+
+            #lyric-display { padding: 20vh 20px; }
+            .main-lyric { font-size: 24px; }
+            .lrc-line { margin: 25px 0; }
+
+            /* 移动端播放器适配 */
+            #global-player-box { padding: 10px 15px; gap: 10px; flex-direction: column; align-items: stretch; }
+            #audio-file-info { width: 100%; text-align: center; }
+            audio { width: 100%; }
+
+            /* 显示底部导航栏 */
+            #mobile-tabs {
+                display: flex; background: var(--card-bg); border-top: 1px solid var(--border-color);
+                padding-bottom: var(--safe-bottom); z-index: 1000;
+            }
+            .tab-btn { flex: 1; text-align: center; padding: 15px 0; font-size: 14px; color: #8b949e; transition: color 0.2s; }
+            .tab-btn.active { color: var(--accent-color); font-weight: bold; background: var(--active-bg); }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-title" style="font-weight: 700; font-size: 18px; white-space: nowrap;">
+        Lyrics Studio <span style="font-size: 12px; color: #fff; background: var(--accent-color); padding: 2px 6px; border-radius: 10px; margin-left: 5px;">v19.0</span>
+    </div>
+    <div class="controls">
+        <div class="custom-select-wrapper" id="anim-dropdown">
+            <div class="custom-select-trigger" id="anim-trigger">🍎 Apple Music</div>
+            <div class="custom-options">
+                <div class="custom-option" data-val="mode-apple">🍎 Apple Music</div>
+                <div class="custom-option" data-val="mode-better">✨ BetterLyrics</div>
+            </div>
+        </div>
+
+        <input type="file" id="audio-input" class="hidden" accept="audio/*">
+        <button onclick="document.getElementById('audio-input').click()">🎵 音频</button>
+        
+        <input type="file" id="lyrics-input" class="hidden" accept=".ttml,.lrc,.zip,.qrc,.krc" multiple>
+        <button onclick="document.getElementById('lyrics-input').click()">📁 歌词</button>
+        
+        <div class="custom-select-wrapper" id="export-dropdown" style="width:140px;">
+            <div class="custom-select-trigger" id="export-trigger">Enhanced LRC</div>
+            <div class="custom-options">
+                <div class="custom-option" data-val="JSON (Apple Music)">JSON (Apple)</div>
+                <div class="custom-option" data-val="Lyricify Syllable">Lyricify Syl</div>
+                <div class="custom-option" data-val="LRC">LRC</div>
+                <div class="custom-option" data-val="Enhanced LRC">Enhanced LRC</div>
+                <div class="custom-option" data-val="QRC">QRC</div>
+                <div class="custom-option" data-val="YRC">YRC</div>
+                <div class="custom-option" data-val="KRC">KRC</div>
+                <div class="custom-option" data-val="TTML">TTML</div>
+            </div>
+        </div>
+        
+        <button class="primary" onclick="batchExportLyrics()">⬇️ 导出</button>
+    </div>
+</header>
+
+<main data-active-tab="files">
+    <div id="file-sidebar" class="panel-container">
+        <div class="panel-title">
+            <span>文件库</span>
+            <span class="count-badge" id="file-count">0</span>
+        </div>
+        <div id="file-list-container">
+            <div style="padding: 20px; font-size:12px; color:#666; text-align:center;">暂无文件<br><br>点击顶部 "📁 歌词" 导入</div>
+        </div>
+    </div>
+
+    <div id="editor-container" class="panel-container">
+        <div class="panel-title">
+            <div><span id="current-file-name">未选择</span> <span id="format-badge" class="badge hidden"></span></div>
+            <span class="count-badge" id="lyric-count">0 行</span>
+        </div>
+        <div id="lyric-list"></div>
+    </div>
+
+    <div id="preview-container" class="panel-container">
+        <div id="lyric-display" class="mode-apple"></div>
+    </div>
+</main>
+
+<div id="global-player-box">
+    <div id="audio-file-info">暂无播放媒体，将虚拟运行</div>
+    <audio id="audio-player" controls></audio>
+</div>
+
+<div id="mobile-tabs">
+    <div class="tab-btn active" data-target="files" onclick="switchMobileTab('files')">📁 文件</div>
+    <div class="tab-btn" data-target="editor" onclick="switchMobileTab('editor')">📝 编辑</div>
+    <div class="tab-btn" data-target="preview" onclick="switchMobileTab('preview')">🎵 预览</div>
+</div>
+
+<script>
+    // =====================================
+    // 0. 移动端 Tab 与 UI 逻辑
+    // =====================================
+    function switchMobileTab(tabName) {
+        document.querySelector('main').setAttribute('data-active-tab', tabName);
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.getAttribute('data-target') === tabName) btn.classList.add('active');
+        });
+    }
+
+    let currentAnimMode = 'mode-apple';
+    let currentExportFormat = 'Enhanced LRC';
+
+    function setupCustomSelect(wrapperId, triggerId, onSelect) {
+        const wrapper = document.getElementById(wrapperId);
+        const trigger = document.getElementById(triggerId);
+        const options = wrapper.querySelectorAll('.custom-option');
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-select-wrapper').forEach(w => { if(w !== wrapper) w.classList.remove('open'); });
+            wrapper.classList.toggle('open');
+        });
+
+        options.forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                trigger.innerHTML = opt.innerHTML;
+                wrapper.classList.remove('open');
+                onSelect(opt.getAttribute('data-val'));
+            });
+        });
+    }
+
+    setupCustomSelect('anim-dropdown', 'anim-trigger', (val) => {
+        currentAnimMode = val;
+        document.getElementById('lyric-display').className = val;
+    });
+
+    setupCustomSelect('export-dropdown', 'export-trigger', (val) => { currentExportFormat = val; });
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.custom-select-wrapper').forEach(w => w.classList.remove('open'));
+    });
+
+    // =====================================
+    // 1. 数据解析引擎
+    // =====================================
+    let filesData = []; 
+    let currentFileIndex = -1;
+    let currentActiveIdx = -1;
+
+    const player = document.getElementById('audio-player');
+    const fileListDOM = document.getElementById('file-list-container');
+    const listContainer = document.getElementById('lyric-list');
+    const displayContainer = document.getElementById('lyric-display');
+
+    function parseTime(str) {
+        if (!str) return 0;
+        if (str.includes(':')) {
+            const p = str.split(':');
+            if (p.length === 3) return parseInt(p[0])*3600 + parseInt(p[1])*60 + parseFloat(p[2]);
+            return parseInt(p[0])*60 + parseFloat(p[1]);
+        }
+        return parseFloat(str);
+    }
+    function formatTime(s) {
+        if (s < 0) s = 0;
+        const m = Math.floor(s / 60);
+        const sec = (s % 60).toFixed(2);
+        return `${String(m).padStart(2, '0')}:${String(sec).padStart(5, '0')}`;
+    }
+    function formatTimeTTML(s) {
+        if (s < 0) s = 0;
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = (s % 60).toFixed(3);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(6, '0')}`;
+    }
+    function ms(time) { return Math.floor(time * 1000); }
+
+    document.getElementById('lyrics-input').onchange = async (e) => {
+        const files = e.target.files;
+        if (files.length === 0) return;
+        
+        for (let file of files) {
+            if (file.name.toLowerCase().endsWith('.zip')) {
+                const zip = new JSZip();
+                try {
+                    const contents = await zip.loadAsync(file);
+                    for (let filename of Object.keys(contents.files)) {
+                        if (!contents.files[filename].dir && filename.match(/\.(ttml|lrc|txt|qrc|krc)$/i)) {
+                            const text = await contents.files[filename].async("text");
+                            addFileToState(filename, text);
+                        }
+                    }
+                } catch (error) { alert("ZIP读取失败: " + error); }
+            } else {
+                const text = await file.text();
+                addFileToState(file.name, text);
+            }
+        }
+        
+        renderFileList();
+        if (currentFileIndex === -1 && filesData.length > 0) selectFile(0);
+        e.target.value = '';
+    };
+
+    function addFileToState(filename, content) {
+        let parsed = [];
+        let format = "LRC";
+        if (content.includes('<tt')) {
+            format = "TTML";
+            parsed = parseTTML(content);
+        } else {
+            parsed = parseLRC(content);
+        }
+        parsed.sort((a, b) => a.time - b.time);
+        filesData.push({ name: filename, data: parsed, format: format });
+    }
+
+    function deleteFile(event, index) {
+        event.stopPropagation();
+        filesData.splice(index, 1);
+        
+        if (filesData.length === 0) {
+            currentFileIndex = -1;
+            document.getElementById('current-file-name').innerText = "未选择文件";
+            document.getElementById('format-badge').classList.add('hidden');
+            listContainer.innerHTML = "";
+            displayContainer.innerHTML = "";
+            document.getElementById('lyric-count').innerText = "0 行";
+        } else {
+            if (currentFileIndex === index) selectFile(0);
+            else if (currentFileIndex > index) currentFileIndex--;
+        }
+        renderFileList();
+    }
+
+    function parseTTML(text) {
+        const xml = new DOMParser().parseFromString(text.replace(/xmlns="[^"]+"/g, ''), "text/xml");
+        const lines = xml.getElementsByTagName('p');
+        let results = [];
+        for (let p of lines) {
+            const lineStart = parseTime(p.getAttribute('begin'));
+            let lineEnd = parseTime(p.getAttribute('end'));
+            let words = [], fullText = "", trans = "";
+            let pendingSpace = "";
+
+            for (let node of p.childNodes) {
+                if (node.nodeType === 1 && node.nodeName === 'span') { 
+                    if (node.getAttribute('ttm:role') === 'x-translation') { trans = node.textContent.trim(); continue; }
+                    const wStart = parseTime(node.getAttribute('begin'));
+                    const wEnd = node.getAttribute('end') ? parseTime(node.getAttribute('end')) : null;
+                    const wText = pendingSpace + node.textContent;
+                    pendingSpace = ""; 
+                    words.push({ t: wStart, text: wText, end: wEnd });
+                    fullText += wText;
+                    if (wEnd && wEnd > lineEnd) lineEnd = wEnd;
+                } else if (node.nodeType === 3) { 
+                    if (words.length > 0) { words[words.length - 1].text += node.textContent; fullText += node.textContent; } 
+                    else { pendingSpace += node.textContent; }
+                }
+            }
+            if (fullText.trim()) results.push({ time: lineStart, endTime: lineEnd, text: fullText.trim(), words: words, translation: trans });
+        }
+        return results;
+    }
+
+    function parseLRC(text) {
+        const lines = text.replace(/\r/g, '').split('\n');
+        let results = [];
+        lines.forEach(line => {
+            const match = line.trim().match(/^\[(\d{2}:\d{2}(?:\.\d+)?)\](.*)/);
+            if (match) {
+                const rowTime = parseTime(match[1]);
+                const rawText = match[2]; 
+                let words = [], pureText = "";
+                const wordRegex = /<(\d{2}:\d{2}(?:\.\d+)?)>([^<]*)/g;
+                let wMatch, isEnhanced = false;
+                
+                while ((wMatch = wordRegex.exec(rawText)) !== null) {
+                    isEnhanced = true;
+                    words.push({ t: parseTime(wMatch[1]), text: wMatch[2] });
+                }
+                
+                if (!isEnhanced) pureText = rawText.replace(/<[^>]+>/g, '').trim();
+                else pureText = words.map(w => w.text).join('').trim();
+                
+                let eTime = rowTime + 3;
+                if (words.length > 0) {
+                    const lastWord = words[words.length - 1];
+                    if (lastWord.text.trim() === "") {
+                        eTime = lastWord.t;
+                        words.pop(); 
+                        if (words.length > 0) words[words.length - 1].end = eTime;
+                    } else { eTime = lastWord.t + 1.0; }
+                }
+                
+                if (results.length > 0 && results[results.length-1].time === rowTime && !isEnhanced) {
+                    results[results.length-1].translation = pureText;
+                } else {
+                    results.push({ time: rowTime, endTime: eTime, text: pureText, words: words, translation: "" });
+                }
+            }
+        });
+        return results;
+    }
+
+    // =====================================
+    // 2. 界面视图渲染
+    // =====================================
+    function renderFileList() {
+        document.getElementById('file-count').innerText = filesData.length;
+        fileListDOM.innerHTML = "";
+        if (filesData.length === 0) {
+            fileListDOM.innerHTML = `<div style="padding: 20px; font-size:12px; color:#666; text-align:center;">暂无文件</div>`;
+            return;
+        }
+        
+        filesData.forEach((file, idx) => {
+            const div = document.createElement('div');
+            div.className = `file-item ${idx === currentFileIndex ? 'active' : ''}`;
+            div.innerHTML = `
+                <div class="file-name" title="${file.name}" onclick="selectFile(${idx})">${file.name}</div>
+                <button class="delete-btn" onclick="deleteFile(event, ${idx})">✕</button>
+            `;
+            fileListDOM.appendChild(div);
+        });
+    }
+
+    function selectFile(index) {
+        if (index < 0 || index >= filesData.length) return;
+        currentFileIndex = index;
+        renderFileList();
+        
+        const file = filesData[index];
+        document.getElementById('current-file-name').innerText = file.name;
+        document.getElementById('format-badge').innerText = file.format;
+        document.getElementById('format-badge').classList.remove('hidden');
+        
+        renderEditorAndPreview();
+
+        // 移动端：选完文件后，智能平滑跳转到预览区，提升沉浸感
+        if(window.innerWidth <= 768) switchMobileTab('preview');
+    }
+
+    function renderEditorAndPreview() {
+        if (currentFileIndex === -1) return;
+        const data = filesData[currentFileIndex].data;
+        listContainer.innerHTML = "";
+        displayContainer.innerHTML = "";
+        document.getElementById('lyric-count').innerText = `${data.length} 行`;
+        
+        data.forEach((item, index) => {
+            const rDiv = document.createElement('div');
+            rDiv.className = 'lyric-row';
+            rDiv.id = `row-${index}`;
+            
+            let wordsHtml = '';
+            if (item.words && item.words.length > 0) {
+                wordsHtml = `<div class="word-panel" id="wpanel-${index}">`;
+                item.words.forEach((w, wi) => {
+                    const displayChar = w.text.trim() === "" ? "␣" : w.text.replace(/ /g, "·");
+                    wordsHtml += `
+                        <div class="word-item">
+                            <span>${displayChar}</span>
+                            <input id="winput-${index}-${wi}" value="${formatTime(w.t)}" onchange="updateWordTime(${index}, ${wi}, this.value)">
+                            <div class="word-btn-group">
+                                <button onclick="shiftWordTime(${index}, ${wi}, -0.05)">-0.05</button>
+                                <button onclick="shiftWordTime(${index}, ${wi}, 0.05)">+0.05</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                wordsHtml += `</div>`;
+            }
+
+            rDiv.innerHTML = `
+                <div class="row-main">
+                    <input id="rtime-${index}" class="time-box" value="${formatTime(item.time)}" onchange="updateTime(${index}, this.value)">
+                    <div class="lyric-inputs">
+                        <input id="rtext-${index}" class="text-box" value="${item.text.replace(/"/g, '&quot;')}" oninput="updateText(${index}, this.value)">
+                        ${item.translation || item.translation === "" ? `<input class="text-box trans-box" value="${item.translation.replace(/"/g, '&quot;')}" oninput="updateTrans(${index}, this.value)" placeholder="添加翻译...">` : ''}
+                    </div>
+                    ${item.words && item.words.length > 0 ? `<button class="btn-word" onclick="toggleWordPanel(${index})">字</button>` : ''}
+                </div>
+                ${wordsHtml}
+            `;
+            listContainer.appendChild(rDiv);
+
+            const pDiv = document.createElement('div');
+            pDiv.className = 'lrc-line';
+            pDiv.id = `prev-${index}`;
+            pDiv.title = "点击可直接跳转进度";
+            
+            pDiv.onclick = (e) => {
+                if (window.getSelection().toString().length > 0) return;
+                if (player.src && player.readyState > 0) {
+                    player.currentTime = item.time;
+                    if (player.paused) player.play();
+                }
+            };
+
+            const mainDiv = document.createElement('div');
+            mainDiv.className = 'main-lyric';
+            mainDiv.id = `pmain-${index}`;
+            
+            if (item.words && item.words.length > 0) {
+                item.words.forEach(w => {
+                    const s = document.createElement('span');
+                    s.className = 'word'; s.innerText = w.text;
+                    mainDiv.appendChild(s);
+                });
+            } else {
+                mainDiv.innerText = item.text;
+            }
+            pDiv.appendChild(mainDiv);
+
+            const tDiv = document.createElement('div');
+            tDiv.className = 'trans-lyric';
+            tDiv.id = `ptrans-${index}`;
+            tDiv.innerText = item.translation || "";
+            if (!item.translation) tDiv.style.display = 'none';
+            pDiv.appendChild(tDiv);
+
+            displayContainer.appendChild(pDiv);
+        });
+        currentActiveIdx = -1;
+    }
+
+    function toggleWordPanel(idx) { document.getElementById(`wpanel-${idx}`).classList.toggle('show'); }
+    function updateTime(idx, val) { filesData[currentFileIndex].data[idx].time = parseTime(val); }
+    
+    function updateText(idx, val) { 
+        filesData[currentFileIndex].data[idx].text = val; 
+        const mainDiv = document.getElementById(`pmain-${idx}`);
+        const dataItem = filesData[currentFileIndex].data[idx];
+        if (dataItem.words && dataItem.words.length > 0) {
+             mainDiv.innerText = val;
+             dataItem.words = [];
+             const wordBtn = document.querySelector(`#row-${idx} .btn-word`);
+             if (wordBtn) wordBtn.style.display = 'none';
+             const wPanel = document.getElementById(`wpanel-${idx}`);
+             if (wPanel) wPanel.style.display = 'none';
+        } else {
+             mainDiv.innerText = val; 
+        }
+    }
+    
+    function updateTrans(idx, val) {
+        filesData[currentFileIndex].data[idx].translation = val;
+        const tDiv = document.getElementById(`ptrans-${idx}`);
+        tDiv.innerText = val;
+        tDiv.style.display = val ? 'block' : 'none';
+    }
+
+    function updateWordTime(rowIdx, wordIdx, val) {
+        const w = filesData[currentFileIndex].data[rowIdx].words[wordIdx];
+        w.t = parseTime(val);
+        if (wordIdx === 0) {
+            filesData[currentFileIndex].data[rowIdx].time = w.t;
+            document.getElementById(`rtime-${rowIdx}`).value = formatTime(w.t);
+        }
+    }
+
+    function shiftWordTime(rowIdx, wordIdx, delta) {
+        const w = filesData[currentFileIndex].data[rowIdx].words[wordIdx];
+        w.t = Math.max(0, w.t + delta);
+        if (w.end) w.end += delta;
+
+        document.getElementById(`winput-${rowIdx}-${wordIdx}`).value = formatTime(w.t);
+        if (wordIdx === 0) {
+            filesData[currentFileIndex].data[rowIdx].time = w.t;
+            document.getElementById(`rtime-${rowIdx}`).value = formatTime(w.t);
+        }
+    }
+
+    // =====================================
+    // 3. 并行驱动动效引擎
+    // =====================================
+    function animationLoop() {
+        if (!player.paused && filesData[currentFileIndex]) {
+            const cur = player.currentTime;
+            const data = filesData[currentFileIndex].data;
+            let anyActive = false;
+            
+            for (let i = 0; i < data.length; i++) {
+                let endTime = data[i].endTime;
+                if (!endTime) endTime = (i < data.length - 1) ? data[i+1].time : data[i].time + 3;
+                
+                const pRow = document.getElementById(`prev-${i}`);
+                const rRow = document.getElementById(`row-${i}`);
+                
+                if (!pRow) continue;
+                
+                if (cur >= data[i].time && cur < endTime) {
+                    anyActive = true;
+                    if (activeIdxChanged(i)) {
+                        pRow.classList.add('active');
+                        if (rRow) rRow.classList.add('active');
+                        displayContainer.scrollTo({ top: pRow.offsetTop - displayContainer.offsetHeight / 2 + 50, behavior: 'smooth' });
+                        if(rRow) listContainer.scrollTo({ top: rRow.offsetTop - listContainer.offsetHeight / 2, behavior: 'smooth' });
+                    }
+                    
+                    if (data[i].words && data[i].words.length > 0) {
+                        const wordNodes = pRow.querySelectorAll('.word');
+                        data[i].words.forEach((w, wi) => {
+                            const node = wordNodes[wi];
+                            if(node) {
+                                let wEndTime = w.end || (wi < data[i].words.length - 1 ? data[i].words[wi+1].t : data[i].endTime || w.t + 0.5);
+                                if (cur >= wEndTime) {
+                                    node.style.setProperty('--fill', '100%'); 
+                                    node.classList.remove('singing');
+                                    node.classList.add('sung');
+                                } else if (cur < w.t) {
+                                    node.style.setProperty('--fill', '0%');
+                                    node.classList.remove('singing', 'sung');
+                                } else {
+                                    node.style.setProperty('--fill', `${((cur - w.t) / (wEndTime - w.t)) * 100}%`);
+                                    node.classList.add('singing');
+                                    node.classList.remove('sung');
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    if (pRow.classList.contains('active')) {
+                        pRow.classList.remove('active');
+                        if (rRow) rRow.classList.remove('active');
+                        pRow.querySelectorAll('.word').forEach(w => w.classList.remove('singing', 'sung'));
+                    }
+                }
+            }
+            if (!anyActive) currentActiveIdx = -1;
+        }
+        requestAnimationFrame(animationLoop);
+    }
+    
+    function activeIdxChanged(idx) {
+        if (currentActiveIdx !== idx) { currentActiveIdx = idx; return true; }
+        return false;
+    }
+    
+    player.onplay = () => requestAnimationFrame(animationLoop);
+    player.ontimeupdate = () => { if(player.paused) requestAnimationFrame(animationLoop); }
+
+    document.getElementById('audio-input').onchange = e => {
+        const file = e.target.files[0];
+        if (file) {
+            player.src = URL.createObjectURL(file);
+            document.getElementById('audio-file-info').innerText = file.name;
+        }
+    };
+
+    // =====================================
+    // 4. 全格式智能导出
+    // =====================================
+    const formatToExt = {
+        'JSON (Apple Music)': '.json', 'Lyricify Syllable': '.lrc', 'LRC': '.lrc',
+        'Enhanced LRC': '.lrc', 'QRC': '.qrc', 'YRC': '.yrc', 'Lyricify Lines': '.lrc',
+        'SPL': '.json', 'Lyricify Quick Export': '.json', 'KRC': '.krc', 'TTML': '.ttml'
+    };
+
+    async function batchExportLyrics() {
+        if (filesData.length === 0) return alert("没有可导出的文件！");
+        const format = currentExportFormat; 
+        const ext = formatToExt[format] || '.txt';
+        
+        if (filesData.length === 1) {
+            downloadFile(generateString(filesData[0], format), filesData[0].name.replace(/\.[^/.]+$/, "") + ext);
+        } else {
+            const zip = new JSZip();
+            filesData.forEach(fileData => {
+                zip.file(fileData.name.replace(/\.[^/.]+$/, "") + ext, generateString(fileData, format));
+            });
+            const blob = await zip.generateAsync({type:"blob"});
+            downloadFile(blob, `LyricsStudio_${format.replace(/[^a-zA-Z0-9]/g,'')}_Export.zip`);
+        }
+    }
+
+    function generateString(fileData, format) {
+        let content = "";
+        const data = fileData.data;
+
+        if (format === 'LRC' || format === 'Lyricify Lines') {
+            data.forEach(d => {
+                content += `[${formatTime(d.time)}]${d.text}\n`;
+                if (d.translation) content += `[${formatTime(d.time)}]${d.translation}\n`;
+            });
+        } 
+        else if (format === 'Enhanced LRC' || format === 'Lyricify Syllable') {
+            data.forEach(d => {
+                let lineStr = `[${formatTime(d.time)}]`;
+                if (d.words && d.words.length > 0) {
+                    d.words.forEach(w => { lineStr += `<${formatTime(w.t)}>${w.text}`; });
+                    lineStr += `<${formatTime(d.endTime || (d.words[d.words.length-1].t + 0.5))}>`;
+                } else { lineStr += d.text; }
+                content += lineStr + "\n";
+                if (d.translation) content += `[${formatTime(d.time)}]${d.translation}\n`;
+            });
+        }
+        else if (format === 'JSON (Apple Music)') {
+            const amData = data.map(d => {
+                let obj = { begin: d.time, end: d.endTime || d.time + 3, text: d.text };
+                if (d.translation) obj.translation = d.translation;
+                if (d.words && d.words.length > 0) {
+                    obj.words = d.words.map((w, wi) => ({
+                        begin: w.t, end: w.end || (wi < d.words.length-1 ? d.words[wi+1].t : (d.endTime || w.t+0.5)), text: w.text
+                    }));
+                }
+                return obj;
+            });
+            content = JSON.stringify(amData, null, 2);
+        }
+        else if (format === 'QRC') {
+            data.forEach(d => {
+                const lineStart = ms(d.time);
+                const lineDur = ms(d.endTime || d.time + 3) - lineStart;
+                let lineStr = `[${lineStart},${lineDur}]`;
+                if (d.words && d.words.length > 0) {
+                    d.words.forEach((w, wi) => {
+                        const wEnd = w.end || (wi < d.words.length-1 ? d.words[wi+1].t : (d.endTime || w.t+0.5));
+                        const wStartRel = ms(w.t) - lineStart;
+                        const wDur = ms(wEnd) - ms(w.t);
+                        lineStr += `${w.text}(${wStartRel},${wDur})`;
+                    });
+                } else { lineStr += d.text; }
+                content += lineStr + "\n";
+            });
+        }
+        else if (format === 'YRC') {
+            const yrcLines = data.map(d => {
+                const lineStart = ms(d.time);
+                const cArray = [];
+                if (d.words && d.words.length > 0) {
+                    d.words.forEach((w, wi) => {
+                        const wEnd = w.end || (wi < d.words.length-1 ? d.words[wi+1].t : (d.endTime || w.t+0.5));
+                        cArray.push({ tx: w.text, t: ms(w.t), l: ms(wEnd) - ms(w.t) });
+                    });
+                } else { cArray.push({ tx: d.text, t: lineStart, l: ms(d.endTime || d.time + 3) - lineStart }); }
+                return { t: lineStart, c: cArray };
+            });
+            content = JSON.stringify(yrcLines);
+        }
+        else if (format === 'KRC') {
+            data.forEach(d => {
+                const lineStart = ms(d.time);
+                const lineDur = ms(d.endTime || d.time + 3) - lineStart;
+                let lineStr = `[${lineStart},${lineDur}]`;
+                if (d.words && d.words.length > 0) {
+                    d.words.forEach((w, wi) => {
+                        const wEnd = w.end || (wi < d.words.length-1 ? d.words[wi+1].t : (d.endTime || w.t+0.5));
+                        const wStartRel = ms(w.t) - lineStart;
+                        const wDur = ms(wEnd) - ms(w.t);
+                        lineStr += `<${wStartRel},${wDur},0>${w.text}`;
+                    });
+                } else { lineStr += d.text; }
+                content += lineStr + "\n";
+            });
+        }
+        else if (format === 'SPL') {
+            const splData = {
+                lyrics: {
+                    lines: data.map(d => {
+                        let obj = { startTimeMs: ms(d.time).toString(), words: d.text, syllables: [] };
+                        if (d.words && d.words.length > 0) {
+                            obj.syllables = d.words.map(w => ({
+                                word: w.text, startTimeMs: ms(w.t).toString(), numChars: w.text.length
+                            }));
+                        }
+                        return obj;
+                    })
+                }
+            };
+            content = JSON.stringify(splData, null, 2);
+        }
+        else if (format === 'TTML') {
+            content = `<?xml version="1.0" encoding="utf-8"?>\n<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">\n  <body>\n    <div>\n`;
+            data.forEach((d, i) => {
+                content += `      <p begin="${formatTimeTTML(d.time)}" end="${formatTimeTTML(d.endTime || d.time+3)}">\n`;
+                if (d.words && d.words.length > 0) {
+                    d.words.forEach((w, wi) => {
+                        const we = w.end || (wi < d.words.length-1 ? d.words[wi+1].t : d.endTime || w.t+0.5);
+                        content += `        <span begin="${formatTimeTTML(w.t)}" end="${formatTimeTTML(we)}">${w.text}</span>\n`;
+                    });
+                } else { content += `        ${d.text}\n`; }
+                if (d.translation) content += `        <span ttm:role="x-translation">${d.translation}</span>\n`;
+                content += `      </p>\n`;
+            });
+            content += `    </div>\n  </body>\n</tt>`;
+        }
+        else { content = JSON.stringify(data, null, 2); }
+        return content;
+    }
+
+    function downloadFile(content, fileName) {
+        const blob = typeof content === 'string' ? new Blob([content], { type: 'text/plain' }) : content;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+    }
+</script>
+</body>
+</html>
