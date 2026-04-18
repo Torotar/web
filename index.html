@@ -318,7 +318,7 @@
     <footer id="about-section">
         <div class="footer-content">
             <div class="footer-col">
-                <h3>关于设计师</h3>
+                <<h3 id="secret-trigger" style="cursor: pointer; user-select: none;" title="有彩蛋哦">关于设计师</h3>
                 <p style="color: var(--text-sub); line-height: 1.7;">
                     李栋强，视觉传达设计专业。<br>
                     擅长通过多维度的视觉语言，探索品牌、插画与三维空间的无限可能。
@@ -573,6 +573,35 @@
         });
 
         window.onload = renderProjects;
+		// ==========================================
+        // 隐藏彩蛋：连续点击 5 次进入歌词工作室
+        // ==========================================
+        const secretTrigger = document.getElementById('secret-trigger');
+        let clickCount = 0;
+        let clickTimer = null;
+
+        if (secretTrigger) {
+            secretTrigger.addEventListener('click', () => {
+                clickCount++;
+                
+                // 每次点击清除之前的重置定时器
+                if (clickTimer) clearTimeout(clickTimer);
+
+                if (clickCount === 5) {
+                    // 触发彩蛋！重置次数并打开新网页
+                    clickCount = 0;
+                    
+                    // 请确保你的歌词工作室 HTML 文件名与这里一致（例如命名为 LyricsStudio.html）
+                    // 并且与 index.html 放在同一个文件夹下
+                    window.open('LyricsStudio.html', '_blank'); 
+                } else {
+                    // 如果 1.2 秒内没有继续点击，则次数清零
+                    clickTimer = setTimeout(() => {
+                        clickCount = 0;
+                    }, 1200);
+                }
+            });
+        }
     </script>
 </body>
 </html>
